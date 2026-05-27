@@ -1,0 +1,19 @@
+{
+  "nav.home": "الرئيسية", "nav.items": "المنتجات", "nav.scan": "مسح", "nav.low": "منخفض", "nav.order": "طلب", "nav.signOut": "تسجيل الخروج", "nav.settings": "الإعدادات",
+  "auth.signIn": "تسجيل الدخول", "auth.newStore": "متجر جديد", "auth.tagline": "كل متجر له مخزونه الخاص — سجّل الدخول من أي جهاز.",
+  "auth.storeCode": "رمز المتجر", "auth.pin": "رمز PIN", "auth.rememberCode": "تذكر رمز المتجر على هذا الجهاز",
+  "auth.keepSignedIn": "البقاء مسجلاً (90 يوماً)", "auth.autoSignIn": "تسجيل دخول تلقائي على هذا الجهاز",
+  "auth.createStore": "إنشاء متجر", "dash.title": "لوحة التحكم", "dash.subtitle": "نظرة عامة على متجرك.",
+  "dash.totalItems": "إجمالي المنتجات", "dash.lowStock": "مخزون منخفض", "dash.stockHealth": "صحة المخزون",
+  "dash.categories": "الفئات", "dash.scan": "مسح الباركود", "dash.manual": "إدخال يدوي",
+  "dash.manage": "إدارة المنتجات", "dash.reorder": "قائمة الطلب", "dash.account": "الحساب والخصوصية", "dash.settings": "الإعدادات",
+  "settings.title": "الإعدادات", "settings.subtitle": "اللغة والمظهر والتنبيهات.", "settings.language": "اللغة",
+  "settings.appearance": "المظهر", "settings.themeLight": "فاتح", "settings.themeDark": "داكن", "settings.themeSystem": "النظام",
+  "settings.alerts": "التنبيهات", "settings.alertsEnable": "تفعيل تنبيهات المخزون المنخفض",
+  "settings.alertsBrowser": "إشعارات المتصفح", "settings.alertsDaily": "ملخص يومي",
+  "settings.saveAlerts": "حفظ إعدادات التنبيه", "settings.saved": "تم حفظ الإعدادات",
+  "alert.low_stock": "{count} منتجات بمخزون منخفض — راجع قائمة الطلب.",
+  "scan.title": "البحث عن منتج", "scan.camera": "الكاميرا", "scan.manual": "إدخال يدوي", "scan.lookup": "بحث",
+  "low.title": "مخزون منخفض", "reorder.title": "قائمة الطلب", "reorder.print": "طباعة",
+  "toast.welcome": "مرحباً بعودتك", "toast.signedOut": "تم تسجيل الخروج"
+}

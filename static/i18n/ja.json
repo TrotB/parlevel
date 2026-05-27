@@ -1,0 +1,19 @@
+{
+  "nav.home": "ホーム", "nav.items": "商品", "nav.scan": "スキャン", "nav.low": "在庫少", "nav.order": "発注", "nav.signOut": "ログアウト", "nav.settings": "設定",
+  "auth.signIn": "ログイン", "auth.newStore": "新規店舗", "auth.tagline": "各店舗の在庫は独立 — どの端末からでもログインできます。",
+  "auth.storeCode": "店舗コード", "auth.pin": "PIN", "auth.rememberCode": "この端末に店舗コードを保存",
+  "auth.keepSignedIn": "ログイン状態を保持（90日）", "auth.autoSignIn": "この端末で自動ログイン",
+  "auth.createStore": "店舗を作成", "dash.title": "ダッシュボード", "dash.subtitle": "店舗の概要。",
+  "dash.totalItems": "商品総数", "dash.lowStock": "在庫不足", "dash.stockHealth": "在庫健全度",
+  "dash.categories": "カテゴリ", "dash.scan": "バーコードスキャン", "dash.manual": "手入力",
+  "dash.manage": "商品管理", "dash.reorder": "発注リスト", "dash.account": "アカウントとプライバシー", "dash.settings": "設定",
+  "settings.title": "設定", "settings.subtitle": "言語、表示、アラート。", "settings.language": "言語",
+  "settings.appearance": "表示", "settings.themeLight": "ライト", "settings.themeDark": "ダーク", "settings.themeSystem": "システム",
+  "settings.alerts": "アラート", "settings.alertsEnable": "在庫不足アラートを有効化",
+  "settings.alertsBrowser": "ブラウザ通知", "settings.alertsDaily": "毎日のサマリー",
+  "settings.saveAlerts": "アラート設定を保存", "settings.saved": "設定を保存しました",
+  "alert.low_stock": "{count} 件の商品が在庫不足です — 発注リストを確認してください。",
+  "scan.title": "商品を検索", "scan.camera": "カメラ", "scan.manual": "手入力", "scan.lookup": "検索",
+  "low.title": "在庫不足", "reorder.title": "発注リスト", "reorder.print": "印刷",
+  "toast.welcome": "おかえりなさい", "toast.signedOut": "ログアウトしました"
+}

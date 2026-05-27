@@ -1,0 +1,19 @@
+{
+  "nav.home": "홈", "nav.items": "품목", "nav.scan": "스캔", "nav.low": "부족", "nav.order": "주문", "nav.signOut": "로그아웃", "nav.settings": "설정",
+  "auth.signIn": "로그인", "auth.newStore": "새 매장", "auth.tagline": "매장별 재고가 분리됩니다 — 어떤 기기에서든 로그인하세요.",
+  "auth.storeCode": "매장 코드", "auth.pin": "PIN", "auth.rememberCode": "이 기기에 매장 코드 저장",
+  "auth.keepSignedIn": "로그인 유지 (90일)", "auth.autoSignIn": "이 기기에서 자동 로그인",
+  "auth.createStore": "매장 만들기", "dash.title": "대시보드", "dash.subtitle": "매장 한눈에 보기.",
+  "dash.totalItems": "총 품목", "dash.lowStock": "재고 부족", "dash.stockHealth": "재고 상태",
+  "dash.categories": "카테고리", "dash.scan": "바코드 스캔", "dash.manual": "수동 입력",
+  "dash.manage": "품목 관리", "dash.reorder": "주문 목록", "dash.account": "계정 및 개인정보", "dash.settings": "설정",
+  "settings.title": "설정", "settings.subtitle": "언어, 화면, 알림.", "settings.language": "언어",
+  "settings.appearance": "화면", "settings.themeLight": "라이트", "settings.themeDark": "다크", "settings.themeSystem": "시스템",
+  "settings.alerts": "알림", "settings.alertsEnable": "재고 부족 알림 켜기",
+  "settings.alertsBrowser": "브라우저 알림", "settings.alertsDaily": "일일 요약",
+  "settings.saveAlerts": "알림 설정 저장", "settings.saved": "설정 저장됨",
+  "alert.low_stock": "재고 부족 품목 {count}개 — 주문 목록을 확인하세요.",
+  "scan.title": "품목 찾기", "scan.camera": "카메라", "scan.manual": "수동 입력", "scan.lookup": "조회",
+  "low.title": "재고 부족", "reorder.title": "주문 목록", "reorder.print": "인쇄",
+  "toast.welcome": "다시 오신 것을 환영합니다", "toast.signedOut": "로그아웃됨"
+}
