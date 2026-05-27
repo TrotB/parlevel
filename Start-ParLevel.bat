@@ -1,7 +1,7 @@
 @echo off
 cd /d "%~dp0"
 echo.
-echo  ParLevel Inventory — by shavi labs
+echo  Inventi — by shavi labs
 echo  ---------------------------------
 echo  Local:   http://localhost:8081
 echo  Phone:   http://YOUR-PC-IP:8081  (same Wi-Fi, run with --host 0.0.0.0)

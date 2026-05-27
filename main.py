@@ -25,7 +25,7 @@ from database import get_db, init_db, utc_now
 from security import audit_log, check_login_rate_limit, client_ip, record_login_attempt, user_agent
 from seed import seed_demo_store
 
-app = FastAPI(title="ParLevel Inventory", docs_url=None if os.getenv("ENV") == "production" else "/docs")
+app = FastAPI(title="Inventi", docs_url=None if os.getenv("ENV") == "production" else "/docs")
 app.add_middleware(GZipMiddleware, minimum_size=500)
 
 _origins = os.getenv("ALLOWED_ORIGINS", "")
@@ -115,6 +115,9 @@ class AlertSettingsModel(BaseModel):
     browser_push: bool = True
     daily_digest: bool = False
     digest_hour: int = Field(ge=0, le=23, default=8)
+    overstock_enabled: bool = False
+    overstock_ratio: float = Field(ge=1.1, le=5.0, default=1.5)
+    overstock_alert_count: int = Field(ge=1, le=500, default=3)
 
 
 DEFAULT_ALERTS = {
@@ -123,7 +126,19 @@ DEFAULT_ALERTS = {
     "browser_push": True,
     "daily_digest": False,
     "digest_hour": 8,
+    "overstock_enabled": False,
+    "overstock_ratio": 1.5,
+    "overstock_alert_count": 3,
 }
+
+
+class BulkAisleUpdate(BaseModel):
+    item_id: int
+    aisle: Optional[str] = None
+
+
+class BulkAisleRequest(BaseModel):
+    updates: list[BulkAisleUpdate] = Field(min_length=1, max_length=500)
 
 
 def parse_alerts(raw: str | None) -> dict:
@@ -150,9 +165,11 @@ def business_public(row) -> dict:
     return data
 
 
-def row_to_item(row) -> dict:
+def row_to_item(row, overstock_ratio: float = 1.5) -> dict:
     on_hand = float(row["on_hand"])
     par = float(row["par"])
+    low = par > 0 and on_hand <= par
+    overstock = par > 0 and on_hand > par * overstock_ratio
     return {
         "id": row["id"],
         "business_id": row["business_id"],
@@ -163,9 +180,57 @@ def row_to_item(row) -> dict:
         "unit": row["unit"],
         "on_hand": on_hand,
         "par": par,
-        "low": on_hand <= par,
-        "need": max(par - on_hand, 0),
+        "low": low,
+        "overstock": overstock,
+        "need": max(par - on_hand, 0) if low else 0,
+        "excess": round(on_hand - par * overstock_ratio, 1) if overstock else 0,
         "updated_at": row["updated_at"],
+    }
+
+
+def _alert_ratio(business: dict) -> float:
+    alerts = business.get("alert_settings") or DEFAULT_ALERTS
+    if isinstance(alerts, dict):
+        return float(alerts.get("overstock_ratio") or 1.5)
+    return 1.5
+
+
+def rows_to_items(rows, business: dict) -> list:
+    ratio = _alert_ratio(business)
+    return [row_to_item(r, ratio) for r in rows]
+
+
+def _item_stats(conn, business_id: int, overstock_ratio: float) -> dict:
+    total = conn.execute(
+        "SELECT COUNT(*) AS c FROM items WHERE business_id = ?", (business_id,)
+    ).fetchone()["c"]
+    low = conn.execute(
+        """
+        SELECT COUNT(*) AS c FROM items
+        WHERE business_id = ? AND par > 0 AND on_hand <= par
+        """,
+        (business_id,),
+    ).fetchone()["c"]
+    overstock = conn.execute(
+        """
+        SELECT COUNT(*) AS c FROM items
+        WHERE business_id = ? AND par > 0 AND on_hand > par * ?
+        """,
+        (business_id, overstock_ratio),
+    ).fetchone()["c"]
+    ok = max(total - low - overstock, 0)
+    stock_health = round((ok / total * 100) if total else 100, 1)
+    categories = conn.execute(
+        "SELECT COUNT(DISTINCT category) AS c FROM items WHERE business_id = ?",
+        (business_id,),
+    ).fetchone()["c"]
+    return {
+        "total_items": total,
+        "low_count": low,
+        "overstock_count": overstock,
+        "ok_count": ok,
+        "stock_health": stock_health,
+        "category_count": categories,
     }
 
 
@@ -291,7 +356,7 @@ def startup() -> None:
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "service": "parlevel", "auth": True}
+    return {"status": "ok", "service": "inventi", "auth": True}
 
 
 @app.get("/api/auth/me")
@@ -527,42 +592,22 @@ def terms_page():
 
 @app.get("/api/business")
 def get_business(business: dict = Depends(require_business)):
+    ratio = _alert_ratio(business)
     with get_db() as conn:
-        count = conn.execute(
-            "SELECT COUNT(*) AS c FROM items WHERE business_id = ?",
-            (business["id"],),
-        ).fetchone()["c"]
-        low = conn.execute(
-            "SELECT COUNT(*) AS c FROM items WHERE business_id = ? AND on_hand <= par",
-            (business["id"],),
-        ).fetchone()["c"]
-        return {"business": business, "item_count": count, "low_count": low}
+        stats = _item_stats(conn, business["id"], ratio)
+        return {
+            "business": business,
+            "item_count": stats["total_items"],
+            "low_count": stats["low_count"],
+            "overstock_count": stats["overstock_count"],
+        }
 
 
 @app.get("/api/stats")
 def stats(business: dict = Depends(require_business)):
-    bid = business["id"]
+    ratio = _alert_ratio(business)
     with get_db() as conn:
-        total = conn.execute(
-            "SELECT COUNT(*) AS c FROM items WHERE business_id = ?", (bid,)
-        ).fetchone()["c"]
-        low = conn.execute(
-            "SELECT COUNT(*) AS c FROM items WHERE business_id = ? AND on_hand <= par AND par > 0",
-            (bid,),
-        ).fetchone()["c"]
-        ok = total - low
-        stock_health = round((ok / total * 100) if total else 100, 1)
-        categories = conn.execute(
-            "SELECT COUNT(DISTINCT category) AS c FROM items WHERE business_id = ?",
-            (bid,),
-        ).fetchone()["c"]
-        return {
-            "total_items": total,
-            "low_count": low,
-            "ok_count": ok,
-            "stock_health": stock_health,
-            "category_count": categories,
-        }
+        return _item_stats(conn, business["id"], ratio)
 
 
 @app.get("/api/items/barcode/{code}")
@@ -577,7 +622,7 @@ def lookup_barcode(code: str, business: dict = Depends(require_business)):
         ).fetchone()
         if not row:
             raise HTTPException(404, "No item with this barcode")
-        return {"item": row_to_item(row)}
+        return {"item": row_to_item(row, _alert_ratio(business))}
 
 
 @app.get("/api/settings")
@@ -635,7 +680,7 @@ def list_items(
     sql += f" ORDER BY {order_col}, name"
     with get_db() as conn:
         rows = conn.execute(sql, params).fetchall()
-        return {"items": [row_to_item(r) for r in rows]}
+        return {"items": rows_to_items(rows, business)}
 
 
 @app.get("/api/categories")
@@ -691,7 +736,7 @@ def create_item(body: ItemCreate, business: dict = Depends(require_business)):
             ),
         )
         row = conn.execute("SELECT * FROM items WHERE id = ?", (cur.lastrowid,)).fetchone()
-        return {"item": row_to_item(row)}
+        return {"item": row_to_item(row, _alert_ratio(business))}
 
 
 @app.put("/api/items/{item_id}")
@@ -700,7 +745,7 @@ def update_item(item_id: int, body: ItemUpdate, business: dict = Depends(require
         row = ensure_item_owned(conn, item_id, business["id"])
         fields = body.model_dump(exclude_unset=True)
         if not fields:
-            return {"item": row_to_item(row)}
+            return {"item": row_to_item(row, _alert_ratio(business))}
         if "name" in fields and fields["name"]:
             fields["name"] = fields["name"].strip()
         if "category" in fields and fields["category"]:
@@ -713,7 +758,7 @@ def update_item(item_id: int, body: ItemUpdate, business: dict = Depends(require
         cols = ", ".join(f"{k} = ?" for k in fields)
         conn.execute(f"UPDATE items SET {cols} WHERE id = ?", [*fields.values(), item_id])
         updated = conn.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
-        return {"item": row_to_item(updated)}
+        return {"item": row_to_item(updated, _alert_ratio(business))}
 
 
 @app.delete("/api/items/{item_id}")
@@ -753,7 +798,7 @@ def adjust_item(
             (item_id, delta, new_qty, body.reason, now),
         )
         updated = conn.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
-        return {"item": row_to_item(updated)}
+        return {"item": row_to_item(updated, _alert_ratio(business))}
 
 
 @app.get("/api/low-stock")
@@ -767,8 +812,26 @@ def low_stock(business: dict = Depends(require_business)):
             """,
             (business["id"],),
         ).fetchall()
-        items = [row_to_item(r) for r in rows]
+        items = rows_to_items(rows, business)
         return {"items": items, "count": len(items)}
+
+
+@app.post("/api/items/bulk-aisle")
+def bulk_aisle(body: BulkAisleRequest, business: dict = Depends(require_business)):
+    now = utc_now()
+    with get_db() as conn:
+        for upd in body.updates:
+            ensure_item_owned(conn, upd.item_id, business["id"])
+            aisle = upd.aisle.strip() if upd.aisle else None
+            conn.execute(
+                "UPDATE items SET aisle = ?, updated_at = ? WHERE id = ?",
+                (aisle, now, upd.item_id),
+            )
+        rows = conn.execute(
+            "SELECT * FROM items WHERE business_id = ? ORDER BY name",
+            (business["id"],),
+        ).fetchall()
+        return {"items": rows_to_items(rows, business), "updated": len(body.updates)}
 
 
 @app.get("/api/reorder")
@@ -782,7 +845,7 @@ def reorder_sheet(business: dict = Depends(require_business)):
             """,
             (business["id"],),
         ).fetchall()
-        items = [row_to_item(r) for r in rows]
+        items = rows_to_items(rows, business)
         return {"business": business, "items": items, "generated_at": utc_now()}
 
 

@@ -1,6 +1,5 @@
-const CACHE = 'parlevel-v1';
-const STATIC = ['/static/styles.css', '/static/app.js', '/static/logo.jfif', '/static/manifest.json'];
-
+const CACHE = 'inventi-v3';
+const STATIC = ['/static/styles.css', '/static/app.js', '/static/i18n.js', '/static/logo.jfif', '/static/manifest.json'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(STATIC)));
   self.skipWaiting();

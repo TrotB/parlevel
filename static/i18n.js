@@ -1,5 +1,7 @@
 /** Lightweight i18n — English inline, other langs lazy-loaded once and cached. */
 (function (global) {
+  const APP_NAME = 'Inventi';
+  const APP_TAGLINE = 'Inventory, minimal.';
   const STORAGE_LANG = 'parlevel_lang';
   const STORAGE_THEME = 'parlevel_theme';
   const RTL = new Set(['ar', 'ur', 'fa', 'he']);
@@ -26,7 +28,7 @@
     'nav.home': 'Home', 'nav.items': 'Items', 'nav.scan': 'Scan', 'nav.low': 'Low',
     'nav.order': 'Order', 'nav.signOut': 'Sign out', 'nav.settings': 'Settings',
     'auth.signIn': 'Sign in', 'auth.newStore': 'New store',
-    'auth.tagline': 'Each store gets its own inventory — sign in to yours from any device.',
+    'auth.tagline': 'Inventory, minimal. Sign in to your store from any device.',
     'auth.storeCode': 'Store code', 'auth.pin': 'PIN',
     'auth.rememberCode': 'Remember store code on this device',
     'auth.keepSignedIn': 'Keep me signed in (90 days)',
@@ -42,7 +44,9 @@
     'dash.categories': 'Categories', 'dash.scan': 'Scan barcode', 'dash.manual': 'Manual input',
     'dash.manage': 'Manage items', 'dash.reorder': 'Reorder sheet', 'dash.account': 'Account & privacy',
     'dash.settings': 'Settings', 'dash.item': 'Item', 'dash.onHand': 'On hand', 'dash.par': 'Par',
-    'dash.status': 'Status', 'dash.need': 'Need', 'dash.allAbovePar': 'All items above par level',
+    'dash.status': 'Status', 'dash.need': 'Need', 'dash.excess': 'Over', 'dash.ok': 'OK',
+    'dash.allAbovePar': 'All items above par level', 'dash.overstock': 'Overstock',
+    'dash.alertSettings': 'Alert settings', 'dash.saveAlerts': 'Save alerts',
     'items.title': 'Items', 'items.viewBy': 'View by', 'items.productType': 'Product type',
     'items.aisle': 'Aisle', 'items.search': 'Search name, barcode, aisle…', 'items.add': 'Add',
     'items.scan': 'Scan', 'items.manual': 'Manual input', 'items.noItems': 'No items yet. Add your first SKU or scan a barcode.',
@@ -52,6 +56,10 @@
     'scan.hint': 'Works best on phone with rear camera', 'scan.barcodeLabel': 'Barcode number',
     'scan.lookup': 'Look up', 'scan.enterBarcode': 'Enter a barcode number',
     'scan.notFound': 'No item with this barcode', 'scan.delivery': 'Delivery', 'scan.setCount': 'Set count',
+    'scan.torch': 'Light', 'scan.torchOff': 'Light off', 'scan.resume': 'Scan next',
+    'scan.scanning': 'Point at barcode — hold steady', 'scan.found': 'Found', 'scan.paused': 'Scanner paused — tap Scan next',
+    'scan.noCamera': 'Camera unavailable. Allow camera access or use manual input.',
+    'scan.torchFail': 'Flash not supported on this device',
     'low.title': 'Low stock', 'low.subtitle': 'Items at or below par level.',
     'reorder.title': 'Reorder sheet', 'reorder.subtitle': 'Print or screenshot for your supplier run.',
     'reorder.print': 'Print', 'reorder.itemsToOrder': '{n} items to order', 'reorder.nothing': 'Nothing to reorder',
@@ -59,20 +67,26 @@
     'settings.title': 'Settings', 'settings.subtitle': 'Language, appearance, and alerts.',
     'settings.language': 'Language', 'settings.languageHint': 'Translations load on demand — English stays instant.',
     'settings.appearance': 'Appearance', 'settings.themeLight': 'Light', 'settings.themeDark': 'Dark',
-    'settings.themeSystem': 'System', 'settings.alerts': 'Alerts', 'settings.alertsHint': 'Get notified when stock runs low.',
+    'settings.themeSystem': 'System', 'settings.alerts': 'Alerts',     'settings.alertsHint': 'Get notified when stock runs low or over par.',
     'settings.alertsEnable': 'Enable low-stock alerts', 'settings.alertsLowCount': 'Alert when this many items (or more) are low',
+    'settings.alertsOverstock': 'Overstock alerts', 'settings.alertsOverstockEnable': 'Alert when items exceed par level',
+    'settings.alertsOverstockRatio': 'Overstock threshold (× par level)', 'settings.alertsOverstockCount': 'Alert when this many items (or more) are overstocked',
     'settings.alertsBrowser': 'Browser notifications', 'settings.alertsDaily': 'Daily summary',
     'settings.alertsDailyHour': 'Summary hour (24h)', 'settings.saveAlerts': 'Save alert settings',
     'settings.saved': 'Settings saved', 'settings.requestNotify': 'Allow notifications to receive alerts on this device.',
     'settings.notifyGranted': 'Notifications enabled', 'settings.notifyDenied': 'Notifications blocked — enable in browser settings',
     'alert.low_stock': '{count} items are low on stock — check your reorder list.',
-    'alert.daily_summary': 'Daily summary: {low} low-stock items, {total} total SKUs.',
+    'alert.overstock': '{count} items are overstocked — review shelf space.',
+    'alert.daily_summary': 'Daily summary: {low} low-stock items, {over} overstocked, {total} total SKUs.',
+    'aisles.title': 'Edit aisles', 'aisles.hint': 'Assign each item to an aisle or location in your store.',
+    'aisles.search': 'Search items…', 'aisles.save': 'Save aisle changes', 'aisles.saved': 'Aisles updated',
+    'items.editAisles': 'Edit aisles',
     'account.title': 'Account & privacy', 'account.intro': 'Your data is encrypted in transit (TLS/HTTPS). PINs are hashed with bcrypt.',
     'account.autoSignIn': 'Auto sign-in on this device', 'account.export': 'Download my data (PIPEDA)',
     'account.forgetDevice': 'Remove trusted device', 'account.deleteStore': 'Delete store & all data',
     'account.deleteTitle': 'Delete store permanently', 'account.deleteWarn': 'This permanently deletes your store, inventory, and all sessions.',
     'account.deleteConfirm': 'Type DELETE to confirm', 'account.deleteBtn': 'Delete everything',
-    'install.banner': 'Install ParLevel on your phone for quick access', 'install.btn': 'Install',
+    'install.banner': 'Install Inventi on your phone for quick access', 'install.btn': 'Install',
     'toast.welcome': 'Welcome back', 'toast.storeCreated': 'Store created', 'toast.signedOut': 'Signed out',
     'toast.autoLogin': 'Signed in automatically', 'toast.organizedAisle': 'Organized by aisle',
     'toast.organizedCategory': 'Organized by product type', 'toast.autoSignInOff': 'Auto sign-in disabled on this device',
@@ -160,8 +174,9 @@
     else applyDocument();
   }
 
-  global.ParlevelPrefs = {
-    LANGS, t, loadLanguage, initPrefs, applyTheme, readTheme, readLang,
+  global.InventiPrefs = {
+    APP_NAME, APP_TAGLINE, LANGS, t, loadLanguage, initPrefs, applyTheme, readTheme, readLang,
     isRtl: () => RTL.has(activeCode),
   };
+  global.ParlevelPrefs = global.InventiPrefs;
 })(window);

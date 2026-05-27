@@ -16,7 +16,7 @@ const installDismiss = document.getElementById('install-dismiss');
 
 const topbarSettingsBtn = document.getElementById('topbar-settings');
 
-const t = (key, vars) => ParlevelPrefs.t(key, vars);
+const t = (key, vars) => InventiPrefs.t(key, vars);
 
 let state = {
   view: 'dashboard',
@@ -69,6 +69,10 @@ function setPrefBool(key, on) {
 let deferredInstall = null;
 
 let scanner = null;
+let scanTorchOn = false;
+let lastScanCode = '';
+let lastScanAt = 0;
+let scanPaused = false;
 let loadingCount = 0;
 let searchTimer = null;
 
@@ -200,9 +204,7 @@ async function loadAisles() {
 async function loadSettings() {
   const data = await api('/api/settings');
   state.organizeBy = data.organize_by || 'category';
-  state.alertSettings = data.alerts || {
-    enabled: false, low_stock_count: 5, browser_push: true, daily_digest: false, digest_hour: 8,
-  };
+  state.alertSettings = mergeAlerts(data.alerts);
   if (state.business) {
     state.business.organize_by = state.organizeBy;
     state.business.alert_settings = state.alertSettings;
@@ -214,7 +216,7 @@ async function saveAlertSettings(alerts) {
     method: 'PATCH',
     body: JSON.stringify({ alerts }),
   });
-  state.alertSettings = data.alerts;
+  state.alertSettings = mergeAlerts(data.alerts);
   if (state.business) state.business.alert_settings = data.alerts;
   toast(t('settings.saved'), 'success');
 }
@@ -243,32 +245,49 @@ function pushBrowserNotification(title, body) {
 }
 
 function checkAlerts() {
-  const a = state.alertSettings;
-  if (!a?.enabled) return;
+  const a = mergeAlerts(state.alertSettings);
+  if (!a.enabled && !a.overstock_enabled) return;
   const low = state.stats?.low_count ?? 0;
+  const over = state.stats?.overstock_count ?? 0;
   const total = state.stats?.total_items ?? state.items.length;
-  const threshold = a.low_stock_count ?? 5;
 
-  if (low >= threshold) {
-    const sig = `low-${low}-${threshold}`;
-    const last = sessionStorage.getItem('parlevel_alert_sig');
-    if (last !== sig) {
-      sessionStorage.setItem('parlevel_alert_sig', sig);
-      const msg = t('alert.low_stock', { count: low });
-      toast(msg, 'error');
-      if (a.browser_push) pushBrowserNotification('ParLevel', msg);
+  if (a.enabled) {
+    const threshold = a.low_stock_count ?? 5;
+    if (low >= threshold) {
+      const sig = `low-${low}-${threshold}`;
+      const last = sessionStorage.getItem('parlevel_alert_sig');
+      if (last !== sig) {
+        sessionStorage.setItem('parlevel_alert_sig', sig);
+        const msg = t('alert.low_stock', { count: low });
+        toast(msg, 'error');
+        if (a.browser_push) pushBrowserNotification(InventiPrefs.APP_NAME, msg);
+      }
     }
   }
 
-  if (a.daily_digest) {
+  if (a.overstock_enabled) {
+    const threshold = a.overstock_alert_count ?? 3;
+    if (over >= threshold) {
+      const sig = `over-${over}-${threshold}`;
+      const last = sessionStorage.getItem('parlevel_overstock_sig');
+      if (last !== sig) {
+        sessionStorage.setItem('parlevel_overstock_sig', sig);
+        const msg = t('alert.overstock', { count: over });
+        toast(msg, 'warn');
+        if (a.browser_push) pushBrowserNotification(InventiPrefs.APP_NAME, msg);
+      }
+    }
+  }
+
+  if (a.enabled && a.daily_digest) {
     const hour = new Date().getHours();
     const today = new Date().toISOString().slice(0, 10);
     const lastDay = localStorage.getItem('parlevel_digest_day');
     if (hour === (a.digest_hour ?? 8) && lastDay !== today && state.stats) {
       localStorage.setItem('parlevel_digest_day', today);
-      const msg = t('alert.daily_summary', { low, total });
+      const msg = t('alert.daily_summary', { low, over, total });
       toast(msg);
-      if (a.browser_push) pushBrowserNotification('ParLevel', msg);
+      if (a.browser_push) pushBrowserNotification(InventiPrefs.APP_NAME, msg);
     }
   }
 }
@@ -287,6 +306,133 @@ function healthClass(pct) {
   if (pct >= 70) return '';
   if (pct >= 40) return 'warn';
   return 'bad';
+}
+
+function alertDefaults() {
+  return {
+    enabled: false,
+    low_stock_count: 5,
+    browser_push: true,
+    daily_digest: false,
+    digest_hour: 8,
+    overstock_enabled: false,
+    overstock_ratio: 1.5,
+    overstock_alert_count: 3,
+  };
+}
+
+function mergeAlerts(a) {
+  return { ...alertDefaults(), ...(a || {}) };
+}
+
+function itemCardClass(item) {
+  if (item.low) return 'low';
+  if (item.overstock) return 'overstock';
+  return '';
+}
+
+function itemStatusBadge(item) {
+  if (item.low) return `<span class="badge badge-low">${t('dash.need')} ${item.need}</span>`;
+  if (item.overstock) return `<span class="badge badge-overstock">${t('dash.excess')} ${item.excess}</span>`;
+  return `<span class="badge badge-ok">${t('dash.ok')}</span>`;
+}
+
+function syncItemCard(card, item) {
+  if (!card || !item) return;
+  card.classList.remove('low', 'overstock');
+  const cls = itemCardClass(item);
+  if (cls) card.classList.add(cls);
+  const badge = card.querySelector('.badge');
+  if (badge) {
+    badge.outerHTML = itemStatusBadge(item);
+  }
+}
+
+function alertSettingsHtml(a, prefix, compact = false) {
+  const p = prefix ? `${prefix}-` : '';
+  return `
+    <label class="check-row">
+      <input type="checkbox" id="${p}alert-enabled" ${a.enabled ? 'checked' : ''}>
+      <span>${t('settings.alertsEnable')}</span>
+    </label>
+    <div class="settings-row">
+      <label for="${p}alert-threshold">${t('settings.alertsLowCount')}</label>
+      <input type="number" id="${p}alert-threshold" min="1" max="500" value="${a.low_stock_count}">
+    </div>
+    <div class="alert-subsection">
+      <label class="check-row">
+        <input type="checkbox" id="${p}alert-overstock" ${a.overstock_enabled ? 'checked' : ''}>
+        <span>${t('settings.alertsOverstockEnable')}</span>
+      </label>
+      <div class="settings-row">
+        <label for="${p}alert-overstock-ratio">${t('settings.alertsOverstockRatio')}</label>
+        <input type="number" id="${p}alert-overstock-ratio" min="1.1" max="5" step="0.1" value="${a.overstock_ratio}">
+      </div>
+      <div class="settings-row">
+        <label for="${p}alert-overstock-count">${t('settings.alertsOverstockCount')}</label>
+        <input type="number" id="${p}alert-overstock-count" min="1" max="500" value="${a.overstock_alert_count}">
+      </div>
+    </div>
+    ${compact ? '' : `
+      <label class="check-row">
+        <input type="checkbox" id="${p}alert-browser" ${a.browser_push ? 'checked' : ''}>
+        <span>${t('settings.alertsBrowser')}</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="${p}alert-daily" ${a.daily_digest ? 'checked' : ''}>
+        <span>${t('settings.alertsDaily')}</span>
+      </label>
+      <div class="settings-row">
+        <label for="${p}alert-hour">${t('settings.alertsDailyHour')}</label>
+        <input type="number" id="${p}alert-hour" min="0" max="23" value="${a.digest_hour}">
+      </div>
+    `}
+  `;
+}
+
+function collectAlertSettings(prefix) {
+  const p = prefix ? `${prefix}-` : '';
+  const base = {
+    enabled: document.getElementById(`${p}alert-enabled`)?.checked ?? false,
+    low_stock_count: parseInt(document.getElementById(`${p}alert-threshold`)?.value, 10) || 5,
+    overstock_enabled: document.getElementById(`${p}alert-overstock`)?.checked ?? false,
+    overstock_ratio: parseFloat(document.getElementById(`${p}alert-overstock-ratio`)?.value) || 1.5,
+    overstock_alert_count: parseInt(document.getElementById(`${p}alert-overstock-count`)?.value, 10) || 3,
+  };
+  const browserEl = document.getElementById(`${p}alert-browser`);
+  if (browserEl) {
+    return {
+      ...base,
+      browser_push: browserEl.checked,
+      daily_digest: document.getElementById(`${p}alert-daily`)?.checked ?? false,
+      digest_hour: parseInt(document.getElementById(`${p}alert-hour`)?.value, 10) || 8,
+    };
+  }
+  const current = mergeAlerts(state.alertSettings);
+  return {
+    ...current,
+    ...base,
+  };
+}
+
+async function bindAlertSave(btnId, prefix) {
+  document.getElementById(btnId)?.addEventListener('click', async () => {
+    const collected = collectAlertSettings(prefix);
+    if (collected.enabled && collected.browser_push && Notification.permission === 'default') {
+      const ok = await requestNotificationPermission();
+      if (!ok && Notification.permission !== 'granted') {
+        toast(t('settings.requestNotify'));
+      }
+    }
+    await saveAlertSettings(collected);
+    await loadStats();
+    await loadItems();
+    checkAlerts();
+    if (state.view === 'dashboard') {
+      const data = await loadBusiness();
+      renderDashboard(data);
+    }
+  });
 }
 
 function renderNav() {
@@ -329,9 +475,10 @@ function renderAuth() {
     <section class="setup">
       <div class="card setup-card">
         <div class="setup-brand">
-          <img src="/static/logo.jfif" alt="ParLevel">
+          <img src="/static/logo.jfif" alt="Inventi">
           <div>
-            <h1>ParLevel</h1>
+            <h1>${InventiPrefs.APP_NAME}</h1>
+            <span class="brand-tagline">${InventiPrefs.APP_TAGLINE}</span>
             <span style="font-size:.8rem;color:var(--gray-600)">by shavi labs</span>
           </div>
         </div>
@@ -468,6 +615,8 @@ function renderAuth() {
 function renderDashboard(data) {
   const s = state.stats;
   const health = s?.stock_health ?? 100;
+  const a = mergeAlerts(state.alertSettings);
+  const overCount = s?.overstock_count ?? data.overstock_count ?? 0;
   main.innerHTML = `
     <section class="page">
       <div class="page-header">
@@ -482,6 +631,10 @@ function renderDashboard(data) {
         <div class="stat">
           <div class="stat-label">${t('dash.lowStock')}</div>
           <div class="stat-value ${data.low_count ? 'bad' : 'good'}">${data.low_count}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">${t('dash.overstock')}</div>
+          <div class="stat-value ${overCount ? 'over' : 'good'}">${overCount}</div>
         </div>
         <div class="stat">
           <div class="stat-label">${t('dash.stockHealth')}</div>
@@ -501,6 +654,14 @@ function renderDashboard(data) {
         <button class="btn btn-ghost" data-view="settings">${t('dash.settings')}</button>
         <button class="btn btn-ghost" id="account-btn">${t('dash.account')}</button>
       </div>
+      <div class="card dashboard-alerts no-print">
+        <div class="settings-section">
+          <h2>${t('dash.alertSettings')}</h2>
+          <p class="settings-hint">${t('settings.alertsHint')}</p>
+          ${alertSettingsHtml(a, 'dash', true)}
+          <button class="btn btn-primary" id="dash-save-alerts-btn" style="margin-top:.75rem">${t('dash.saveAlerts')}</button>
+        </div>
+      </div>
       <div class="card">
         <div class="table-wrap">
           <table>
@@ -511,7 +672,7 @@ function renderDashboard(data) {
                   <td>${esc(item.name)}</td>
                   <td>${item.on_hand}</td>
                   <td class="hide-sm">${item.par}</td>
-                  <td><span class="badge badge-low">${t('dash.need')} ${item.need}</span></td>
+                  <td>${itemStatusBadge(item)}</td>
                 </tr>
               `).join('') || `<tr><td colspan="4"><div class="empty"><div class="empty-icon">✓</div>${t('dash.allAbovePar')}</div></td></tr>`}
             </tbody>
@@ -521,6 +682,7 @@ function renderDashboard(data) {
     </section>
   `;
   bindViewButtons();
+  bindAlertSave('dash-save-alerts-btn', 'dash');
   document.getElementById('account-btn')?.addEventListener('click', showAccountModal);
   document.getElementById('manual-input-btn')?.addEventListener('click', () => openManualInput());
   main.querySelectorAll('[data-goto-item]').forEach(row => {
@@ -538,13 +700,13 @@ function renderDashboard(data) {
 
 function itemCard(item) {
   return `
-    <article class="item-card ${item.low ? 'low' : ''}" data-id="${item.id}">
+    <article class="item-card ${itemCardClass(item)}" data-id="${item.id}">
       <div class="item-card-head">
         <div>
           <h3>${esc(item.name)}</h3>
           <div class="item-meta">${esc(item.category)}${item.aisle ? ` · ${esc(item.aisle)}` : ''} · ${esc(item.unit)}${item.barcode ? ` · ${esc(item.barcode)}` : ''}</div>
         </div>
-        <span class="badge ${item.low ? 'badge-low' : 'badge-ok'}">${item.low ? 'Low' : 'OK'}</span>
+        ${itemStatusBadge(item)}
       </div>
       <div class="qty-row">
         <button class="btn btn-ghost btn-sm btn-icon" data-adjust="${item.id}" data-delta="-1" aria-label="Decrease">−</button>
@@ -617,6 +779,7 @@ function renderItems() {
           ${filterOptions}
         </select>
         <button class="btn btn-primary" id="add-item">Add</button>
+        <button class="btn btn-ghost" id="edit-aisles-btn">${t('items.editAisles')}</button>
         <button class="btn btn-ghost" id="scan-shortcut">Scan</button>
         <button class="btn btn-ghost" id="manual-shortcut">Manual input</button>
       </div>
@@ -660,6 +823,7 @@ function renderItems() {
   });
 
   document.getElementById('add-item').addEventListener('click', () => openItemForm());
+  document.getElementById('edit-aisles-btn')?.addEventListener('click', () => openAisleManager());
   document.getElementById('scan-shortcut').addEventListener('click', () => {
     state.scanMode = 'camera';
     navigate('scan');
@@ -697,10 +861,12 @@ function bindItemActions() {
         const item = state.items.find(i => i.id === Number(btn.dataset.adjust));
         if (item && card) {
           item.on_hand = Number(document.getElementById(`qty-${item.id}`).textContent);
-          item.low = item.on_hand <= item.par;
-          card.classList.toggle('low', item.low);
-          card.querySelector('.badge').className = `badge ${item.low ? 'badge-low' : 'badge-ok'}`;
-          card.querySelector('.badge').textContent = item.low ? 'Low' : 'OK';
+          item.low = item.par > 0 && item.on_hand <= item.par;
+          const ratio = mergeAlerts(state.alertSettings).overstock_ratio;
+          item.overstock = item.par > 0 && item.on_hand > item.par * ratio;
+          item.need = item.low ? Math.max(item.par - item.on_hand, 0) : 0;
+          item.excess = item.overstock ? Math.round((item.on_hand - item.par * ratio) * 10) / 10 : 0;
+          syncItemCard(card, item);
         }
       } catch (err) {
         toast(err.message, 'error');
@@ -763,6 +929,56 @@ function bindItemActions() {
     btn.addEventListener('click', () => {
       openItemForm(state.items.find(i => i.id === Number(btn.dataset.edit)));
     });
+  });
+}
+
+function openAisleManager() {
+  const knownAisles = [...new Set([
+    ...state.aisles.map(a => a.aisle),
+    ...state.items.map(i => i.aisle).filter(Boolean),
+  ])].sort();
+  const datalist = knownAisles.map(a => `<option value="${esc(a)}">`).join('');
+
+  showModal(t('aisles.title'), `
+    <p class="settings-hint">${t('aisles.hint')}</p>
+    <input class="search" id="aisle-search" placeholder="${t('aisles.search')}">
+    <div class="aisle-manager-list" id="aisle-list">
+      ${state.items.map(item => `
+        <div class="aisle-row" data-name="${esc(item.name.toLowerCase())}">
+          <span class="aisle-name">${esc(item.name)}</span>
+          <input class="aisle-input" list="aisle-options" value="${esc(item.aisle || '')}" data-id="${item.id}">
+        </div>
+      `).join('')}
+    </div>
+    <datalist id="aisle-options">${datalist}</datalist>
+    <button class="btn btn-primary" id="save-aisles">${t('aisles.save')}</button>
+  `);
+
+  document.getElementById('aisle-search')?.addEventListener('input', e => {
+    const q = e.target.value.trim().toLowerCase();
+    document.querySelectorAll('#aisle-list .aisle-row').forEach(row => {
+      row.hidden = q && !row.dataset.name.includes(q);
+    });
+  });
+
+  document.getElementById('save-aisles')?.addEventListener('click', async () => {
+    try {
+      const updates = [...document.querySelectorAll('.aisle-input')].map(input => ({
+        item_id: Number(input.dataset.id),
+        aisle: input.value.trim() || null,
+      }));
+      const data = await api('/api/items/bulk-aisle', {
+        method: 'POST',
+        body: JSON.stringify({ updates }),
+      });
+      state.items = data.items;
+      await loadAisles();
+      toast(t('aisles.saved'), 'success');
+      hideModal();
+      if (state.view === 'items') renderItems();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
   });
 }
 
@@ -852,12 +1068,80 @@ function renderScanResult(item) {
   `;
 }
 
-async function handleBarcode(code) {
+function normalizeBarcode(raw) {
+  return String(raw ?? '').trim().replace(/[\s\-]/g, '');
+}
+
+function beepScan() {
   haptic();
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g);
+    g.connect(ctx.destination);
+    o.frequency.value = 880;
+    g.gain.value = 0.06;
+    o.start();
+    o.stop(ctx.currentTime + 0.08);
+  } catch { /* silent fallback */ }
+}
+
+async function pauseScannerAfterScan() {
+  if (!scanner || state.scanMode !== 'camera') return;
+  try {
+    await scanner.pause(true);
+    scanPaused = true;
+    document.getElementById('scan-resume-btn')?.removeAttribute('hidden');
+    const hint = document.getElementById('scan-live-hint');
+    if (hint) hint.textContent = t('scan.paused');
+  } catch { /* ignore */ }
+}
+
+async function resumeScannerScan() {
+  if (!scanner) return;
+  try {
+    await scanner.resume();
+    scanPaused = false;
+    document.getElementById('scan-resume-btn')?.setAttribute('hidden', '');
+    const hint = document.getElementById('scan-live-hint');
+    if (hint) hint.textContent = t('scan.scanning');
+  } catch { /* ignore */ }
+}
+
+async function toggleScanTorch() {
+  if (!scanner) return;
+  try {
+    scanTorchOn = !scanTorchOn;
+    await scanner.applyVideoConstraints({
+      advanced: [{ torch: scanTorchOn }],
+    });
+    const btn = document.getElementById('scan-torch-btn');
+    if (btn) btn.textContent = scanTorchOn ? t('scan.torchOff') : t('scan.torch');
+  } catch {
+    toast(t('scan.torchFail'), 'error');
+  }
+}
+
+async function handleBarcode(rawCode) {
+  const code = normalizeBarcode(rawCode);
+  if (!code) return;
+
+  const now = Date.now();
+  if (code === lastScanCode && now - lastScanAt < 2500) return;
+  lastScanCode = code;
+  lastScanAt = now;
+
+  beepScan();
+  await pauseScannerAfterScan();
+
+  const lastEl = document.getElementById('scan-last-code');
+  if (lastEl) lastEl.textContent = code;
+
   try {
     const data = await api(`/api/items/barcode/${encodeURIComponent(code)}`);
     document.getElementById('scan-output').innerHTML = renderScanResult(data.item);
-    toast(`Found: ${data.item.name}`, 'success');
+    toast(`${t('scan.found')}: ${data.item.name}`, 'success');
 
     document.getElementById('scan-minus').onclick = async () => {
       const updated = await adjustItem(data.item.id, { delta: -1, reason: 'manual' });
@@ -923,33 +1207,74 @@ async function stopScanner() {
   try { await scanner.stop(); } catch { /* ignore */ }
   try { scanner.clear(); } catch { /* ignore */ }
   scanner = null;
+  scanTorchOn = false;
+  scanPaused = false;
+}
+
+async function pickRearCameraId() {
+  try {
+    const cams = await Html5Qrcode.getCameras();
+    if (!cams?.length) return { facingMode: 'environment' };
+    const back = cams.find(c =>
+      /back|rear|environment|wide|camera2 0/i.test(c.label)
+    );
+    return back?.id || cams[cams.length - 1].id;
+  } catch {
+    return { facingMode: 'environment' };
+  }
 }
 
 async function startScanner() {
   if (typeof Html5Qrcode === 'undefined') {
-    document.getElementById('scanner').innerHTML = '<div class="empty" style="color:#fff;padding:2rem">Scanner library failed to load.</div>';
+    document.getElementById('scanner').innerHTML = `<div class="empty scan-error">${t('scan.noCamera')}</div>`;
     return;
   }
 
   await stopScanner();
-  scanner = new Html5Qrcode('scanner');
-  const config = { fps: 12, qrbox: { width: 260, height: 140 }, aspectRatio: 1.0 };
+  scanPaused = false;
+
+  const formats = window.Html5QrcodeSupportedFormats
+    ? [
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.QR_CODE,
+      ]
+    : undefined;
+
+  scanner = new Html5Qrcode('scanner', {
+    formatsToSupport: formats,
+    verbose: false,
+  });
+
+  const config = {
+    fps: 15,
+    qrbox: (w, h) => {
+      const width = Math.min(Math.floor(w * 0.92), 420);
+      const height = Math.min(Math.floor(width * 0.42), 200);
+      return { width, height };
+    },
+    aspectRatio: 1.777778,
+    experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+    disableFlip: false,
+  };
+
+  const cameraId = await pickRearCameraId();
 
   try {
     await scanner.start(
-      { facingMode: 'environment' },
+      cameraId,
       config,
-      decoded => {
-        if (decoded) handleBarcode(decoded);
-      },
+      decoded => { if (decoded) handleBarcode(decoded); },
       () => {}
     );
+    const hint = document.getElementById('scan-live-hint');
+    if (hint) hint.textContent = t('scan.scanning');
   } catch {
-    document.getElementById('scanner').innerHTML = `
-      <div class="empty" style="color:#fff;padding:2rem">
-        Camera access denied or unavailable.<br>Use manual entry below.
-      </div>
-    `;
+    document.getElementById('scanner').innerHTML = `<div class="empty scan-error">${t('scan.noCamera')}</div>`;
   }
 }
 
@@ -971,8 +1296,16 @@ function renderScan() {
         <button type="button" class="scan-mode-btn ${manual ? 'active' : ''}" data-scan-mode="manual">${t('scan.manual')}</button>
       </div>
       <div id="scan-camera-section" ${manual ? 'hidden' : ''}>
-        <p class="scan-hint">${t('scan.hint')}</p>
-        <div class="scanner-wrap"><div id="scanner"></div></div>
+        <p class="scan-hint" id="scan-live-hint">${t('scan.scanning')}</p>
+        <div class="scanner-wrap">
+          <div id="scanner"></div>
+          <div class="scan-target" aria-hidden="true"></div>
+        </div>
+        <div class="scan-controls no-print">
+          <button type="button" class="btn btn-ghost btn-sm" id="scan-torch-btn">${t('scan.torch')}</button>
+          <button type="button" class="btn btn-primary btn-sm" id="scan-resume-btn" hidden>${t('scan.resume')}</button>
+          <span class="scan-last" id="scan-last-wrap">Last: <code id="scan-last-code">—</code></span>
+        </div>
       </div>
       <div class="scan-manual no-print ${manual ? 'scan-manual-prominent' : ''}">
         <label class="scan-manual-label" for="manual-barcode">${t('scan.barcodeLabel')}</label>
@@ -1006,6 +1339,12 @@ function renderScan() {
       const code = e.target.value.trim();
       if (code) handleBarcode(code);
     }
+  });
+
+  document.getElementById('scan-torch-btn')?.addEventListener('click', toggleScanTorch);
+  document.getElementById('scan-resume-btn')?.addEventListener('click', async () => {
+    lastScanCode = '';
+    await resumeScannerScan();
   });
 
   if (manual) {
@@ -1089,19 +1428,17 @@ async function renderReorder() {
       </div>
       <div class="print-area">
         <h2>${esc(data.business.name)} — Reorder list</h2>
-        <p>Generated ${date} · ParLevel by shavi labs</p>
+        <p>Generated ${date} · ${InventiPrefs.APP_NAME} by shavi labs</p>
       </div>
     </section>
   `;
 }
 
 function renderSettings() {
-  const lang = ParlevelPrefs.readLang();
-  const theme = ParlevelPrefs.readTheme();
-  const a = state.alertSettings || {
-    enabled: false, low_stock_count: 5, browser_push: true, daily_digest: false, digest_hour: 8,
-  };
-  const langOptions = ParlevelPrefs.LANGS.map(l =>
+  const lang = InventiPrefs.readLang();
+  const theme = InventiPrefs.readTheme();
+  const a = mergeAlerts(state.alertSettings);
+  const langOptions = InventiPrefs.LANGS.map(l =>
     `<option value="${l.code}" ${l.code === lang ? 'selected' : ''}>${l.native}</option>`
   ).join('');
 
@@ -1133,26 +1470,7 @@ function renderSettings() {
         <div class="settings-section">
           <h2>${t('settings.alerts')}</h2>
           <p class="settings-hint">${t('settings.alertsHint')}</p>
-          <label class="check-row">
-            <input type="checkbox" id="alert-enabled" ${a.enabled ? 'checked' : ''}>
-            <span>${t('settings.alertsEnable')}</span>
-          </label>
-          <div class="settings-row">
-            <label for="alert-threshold">${t('settings.alertsLowCount')}</label>
-            <input type="number" id="alert-threshold" min="1" max="500" value="${a.low_stock_count}">
-          </div>
-          <label class="check-row">
-            <input type="checkbox" id="alert-browser" ${a.browser_push ? 'checked' : ''}>
-            <span>${t('settings.alertsBrowser')}</span>
-          </label>
-          <label class="check-row">
-            <input type="checkbox" id="alert-daily" ${a.daily_digest ? 'checked' : ''}>
-            <span>${t('settings.alertsDaily')}</span>
-          </label>
-          <div class="settings-row">
-            <label for="alert-hour">${t('settings.alertsDailyHour')}</label>
-            <input type="number" id="alert-hour" min="0" max="23" value="${a.digest_hour}">
-          </div>
+          ${alertSettingsHtml(a, 'settings', false)}
           <button class="btn btn-primary" id="save-alerts-btn" style="margin-top:.75rem">${t('settings.saveAlerts')}</button>
         </div>
 
@@ -1164,35 +1482,18 @@ function renderSettings() {
   `;
 
   document.getElementById('lang-select')?.addEventListener('change', async e => {
-    await ParlevelPrefs.loadLanguage(e.target.value);
+    await InventiPrefs.loadLanguage(e.target.value);
     await render();
   });
 
   main.querySelectorAll('[data-theme]').forEach(btn => {
     btn.addEventListener('click', async () => {
-      ParlevelPrefs.applyTheme(btn.dataset.theme);
+      InventiPrefs.applyTheme(btn.dataset.theme);
       await render();
     });
   });
 
-  document.getElementById('save-alerts-btn')?.addEventListener('click', async () => {
-    const enabled = document.getElementById('alert-enabled').checked;
-    const browserPush = document.getElementById('alert-browser').checked;
-    if (enabled && browserPush && Notification.permission === 'default') {
-      const ok = await requestNotificationPermission();
-      if (!ok && Notification.permission !== 'granted') {
-        toast(t('settings.requestNotify'));
-      }
-    }
-    await saveAlertSettings({
-      enabled,
-      low_stock_count: parseInt(document.getElementById('alert-threshold').value, 10) || 5,
-      browser_push: browserPush,
-      daily_digest: document.getElementById('alert-daily').checked,
-      digest_hour: parseInt(document.getElementById('alert-hour').value, 10) || 8,
-    });
-    checkAlerts();
-  });
+  bindAlertSave('save-alerts-btn', 'settings');
 
   document.getElementById('settings-account-btn')?.addEventListener('click', showAccountModal);
 }
@@ -1236,7 +1537,7 @@ function showAccountModal() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `parlevel-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `inventi-export-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
       toast(t('toast.exported'), 'success');
@@ -1348,7 +1649,7 @@ async function navigate(view) {
 }
 
 async function init() {
-  await ParlevelPrefs.initPrefs();
+  await InventiPrefs.initPrefs();
   state.initializing = true;
   try {
     if (!prefBool(PREFS.autoLogin, true)) {

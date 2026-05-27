@@ -147,17 +147,33 @@ DEMO_STORE_CODE = "cornershop"
 DEMO_PIN = "1234"
 
 
+def _balanced_stock(par: float, index: int) -> float:
+    """Spread demo stock: ~20% low, ~20% overstock, ~60% healthy."""
+    if par <= 0:
+        return 0.0
+    bucket = index % 10
+    if bucket < 2:
+        return round(max(par * (0.25 + (index % 3) * 0.08), 0), 1)
+    if bucket >= 8:
+        return round(par * (1.6 + (index % 3) * 0.15), 1)
+    return round(par * (1.05 + (bucket % 6) * 0.06), 1)
+
+
 def _upsert_items(conn, business_id: int, now: str) -> None:
-    """Insert missing demo items; refresh aisle on existing ones."""
-    for name, category, barcode, unit, on_hand, par, aisle in SAMPLE_ITEMS:
+    """Insert missing demo items; refresh aisle and rebalance stock on existing ones."""
+    for idx, (name, category, barcode, unit, _oh, par, aisle) in enumerate(SAMPLE_ITEMS):
+        on_hand = _balanced_stock(par, idx)
         existing = conn.execute(
             "SELECT id FROM items WHERE business_id = ? AND name = ?",
             (business_id, name),
         ).fetchone()
         if existing:
             conn.execute(
-                "UPDATE items SET aisle = ?, category = ? WHERE id = ?",
-                (aisle, category, existing["id"]),
+                """
+                UPDATE items SET aisle = ?, category = ?, on_hand = ?, par = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (aisle, category, on_hand, par, now, existing["id"]),
             )
         else:
             conn.execute(

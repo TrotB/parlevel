@@ -1,13 +1,12 @@
 {
-  "name": "ParLevel Inventory",
-  "short_name": "ParLevel",
-  "description": "Inventory tracking for convenience stores — by shavi labs",
+  "name": "Inventi",
+  "short_name": "Inventi",
+  "description": "Minimal inventory for modern stores",
   "start_url": "/",
-  "scope": "/",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#fafafa",
+  "background_color": "#0f0f0f",
   "theme_color": "#0a0a0a",
+  "orientation": "portrait-primary",
   "icons": [
     {
       "src": "/static/logo.jfif",
