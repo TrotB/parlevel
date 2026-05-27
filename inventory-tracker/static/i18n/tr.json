@@ -1,0 +1,19 @@
+{
+  "nav.home": "Ana sayfa", "nav.items": "Ürünler", "nav.scan": "Tara", "nav.low": "Düşük", "nav.order": "Sipariş", "nav.signOut": "Çıkış", "nav.settings": "Ayarlar",
+  "auth.signIn": "Giriş yap", "auth.newStore": "Yeni mağaza", "auth.tagline": "Her mağazanın kendi envanteri vardır — her cihazdan giriş yapın.",
+  "auth.storeCode": "Mağaza kodu", "auth.pin": "PIN", "auth.rememberCode": "Mağaza kodunu bu cihazda hatırla",
+  "auth.keepSignedIn": "Oturumu açık tut (90 gün)", "auth.autoSignIn": "Bu cihazda otomatik giriş",
+  "auth.createStore": "Mağaza oluştur", "dash.title": "Kontrol paneli", "dash.subtitle": "Mağazanıza genel bakış.",
+  "dash.totalItems": "Toplam ürün", "dash.lowStock": "Düşük stok", "dash.stockHealth": "Stok sağlığı",
+  "dash.categories": "Kategoriler", "dash.scan": "Barkod tara", "dash.manual": "Manuel giriş",
+  "dash.manage": "Ürünleri yönet", "dash.reorder": "Sipariş listesi", "dash.account": "Hesap ve gizlilik", "dash.settings": "Ayarlar",
+  "settings.title": "Ayarlar", "settings.subtitle": "Dil, görünüm ve uyarılar.", "settings.language": "Dil",
+  "settings.appearance": "Görünüm", "settings.themeLight": "Açık", "settings.themeDark": "Koyu", "settings.themeSystem": "Sistem",
+  "settings.alerts": "Uyarılar", "settings.alertsEnable": "Düşük stok uyarılarını etkinleştir",
+  "settings.alertsBrowser": "Tarayıcı bildirimleri", "settings.alertsDaily": "Günlük özet",
+  "settings.saveAlerts": "Uyarı ayarlarını kaydet", "settings.saved": "Ayarlar kaydedildi",
+  "alert.low_stock": "{count} ürün düşük stokta — sipariş listesini kontrol edin.",
+  "scan.title": "Ürün bul", "scan.camera": "Kamera", "scan.manual": "Manuel", "scan.lookup": "Ara",
+  "low.title": "Düşük stok", "reorder.title": "Sipariş listesi", "reorder.print": "Yazdır",
+  "toast.welcome": "Tekrar hoş geldiniz", "toast.signedOut": "Çıkış yapıldı"
+}

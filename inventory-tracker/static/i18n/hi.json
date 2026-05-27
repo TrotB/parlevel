@@ -1,0 +1,19 @@
+{
+  "nav.home": "होम", "nav.items": "आइटम", "nav.scan": "स्कैन", "nav.low": "कम", "nav.order": "ऑर्डर", "nav.signOut": "साइन आउट", "nav.settings": "सेटिंग्स",
+  "auth.signIn": "साइन इन", "auth.newStore": "नई दुकान", "auth.tagline": "हर दुकान का अलग इन्वेंटरी — किसी भी डिवाइस से साइन इन करें।",
+  "auth.storeCode": "स्टोर कोड", "auth.pin": "PIN", "auth.rememberCode": "इस डिवाइस पर स्टोर कोड याद रखें",
+  "auth.keepSignedIn": "90 दिन साइन इन रखें", "auth.autoSignIn": "इस डिवाइस पर ऑटो साइन इन",
+  "auth.createStore": "दुकान बनाएं", "dash.title": "डैशबोर्ड", "dash.subtitle": "आपकी दुकान एक नज़र में।",
+  "dash.totalItems": "कुल आइटम", "dash.lowStock": "कम स्टॉक", "dash.stockHealth": "स्टॉक स्वास्थ्य",
+  "dash.categories": "श्रेणियाँ", "dash.scan": "बारकोड स्कैन", "dash.manual": "मैन्युअल इनपुट",
+  "dash.manage": "आइटम प्रबंधित करें", "dash.reorder": "रीऑर्डर शीट", "dash.account": "खाता और गोपनीयता", "dash.settings": "सेटिंग्स",
+  "settings.title": "सेटिंग्स", "settings.subtitle": "भाषा, दिखावट और अलर्ट।", "settings.language": "भाषा",
+  "settings.appearance": "दिखावट", "settings.themeLight": "लाइट", "settings.themeDark": "डार्क", "settings.themeSystem": "सिस्टम",
+  "settings.alerts": "अलर्ट", "settings.alertsEnable": "कम स्टॉक अलर्ट चालू करें",
+  "settings.alertsBrowser": "ब्राउज़र सूचनाएं", "settings.alertsDaily": "दैनिक सारांश",
+  "settings.saveAlerts": "अलर्ट सेटिंग्स सहेजें", "settings.saved": "सेटिंग्स सहेजी गईं",
+  "alert.low_stock": "{count} आइटम कम स्टॉक पर — रीऑर्डर सूची देखें।",
+  "scan.title": "आइटम खोजें", "scan.camera": "कैमरा", "scan.manual": "मैन्युअल", "scan.lookup": "खोजें",
+  "low.title": "कम स्टॉक", "reorder.title": "रीऑर्डर शीट", "reorder.print": "प्रिंट",
+  "toast.welcome": "वापसी पर स्वागत है", "toast.signedOut": "साइन आउट हो गया"
+}

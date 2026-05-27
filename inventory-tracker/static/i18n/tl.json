@@ -1,0 +1,19 @@
+{
+  "nav.home": "Home", "nav.items": "Mga item", "nav.scan": "I-scan", "nav.low": "Mababa", "nav.order": "Order", "nav.signOut": "Mag-sign out", "nav.settings": "Settings",
+  "auth.signIn": "Mag-sign in", "auth.newStore": "Bagong tindahan", "auth.tagline": "May sariling inventory ang bawat tindahan — mag-sign in mula sa anumang device.",
+  "auth.storeCode": "Store code", "auth.pin": "PIN", "auth.rememberCode": "Tandaan ang store code sa device na ito",
+  "auth.keepSignedIn": "Panatilihing naka-sign in (90 araw)", "auth.autoSignIn": "Auto sign-in sa device na ito",
+  "auth.createStore": "Gumawa ng tindahan", "dash.title": "Dashboard", "dash.subtitle": "Buod ng iyong tindahan.",
+  "dash.totalItems": "Kabuuang item", "dash.lowStock": "Mababang stock", "dash.stockHealth": "Kalusugan ng stock",
+  "dash.categories": "Mga kategorya", "dash.scan": "I-scan ang barcode", "dash.manual": "Manual na input",
+  "dash.manage": "Pamahalaan ang mga item", "dash.reorder": "Reorder sheet", "dash.account": "Account at privacy", "dash.settings": "Settings",
+  "settings.title": "Settings", "settings.subtitle": "Wika, itsura, at mga alerto.", "settings.language": "Wika",
+  "settings.appearance": "Itsura", "settings.themeLight": "Maliwanag", "settings.themeDark": "Madilim", "settings.themeSystem": "System",
+  "settings.alerts": "Mga alerto", "settings.alertsEnable": "I-enable ang low-stock alerts",
+  "settings.alertsBrowser": "Browser notifications", "settings.alertsDaily": "Araw-araw na buod",
+  "settings.saveAlerts": "I-save ang alert settings", "settings.saved": "Na-save ang settings",
+  "alert.low_stock": "{count} item ang mababa ang stock — tingnan ang reorder list.",
+  "scan.title": "Hanapin ang item", "scan.camera": "Camera", "scan.manual": "Manual", "scan.lookup": "Hanapin",
+  "low.title": "Mababang stock", "reorder.title": "Reorder sheet", "reorder.print": "I-print",
+  "toast.welcome": "Maligayang pagbabalik", "toast.signedOut": "Naka-sign out na"
+}

@@ -1,0 +1,19 @@
+{
+  "nav.home": "首页", "nav.items": "商品", "nav.scan": "扫描", "nav.low": "低库存", "nav.order": "订货", "nav.signOut": "退出", "nav.settings": "设置",
+  "auth.signIn": "登录", "auth.newStore": "新店铺", "auth.tagline": "每家店独立库存 — 可在任何设备登录。",
+  "auth.storeCode": "店铺代码", "auth.pin": "PIN码", "auth.rememberCode": "在此设备记住店铺代码",
+  "auth.keepSignedIn": "保持登录（90天）", "auth.autoSignIn": "在此设备自动登录",
+  "auth.createStore": "创建店铺", "dash.title": "仪表盘", "dash.subtitle": "店铺概览。",
+  "dash.totalItems": "商品总数", "dash.lowStock": "低库存", "dash.stockHealth": "库存健康度",
+  "dash.categories": "分类", "dash.scan": "扫描条码", "dash.manual": "手动输入",
+  "dash.manage": "管理商品", "dash.reorder": "订货单", "dash.account": "账户与隐私", "dash.settings": "设置",
+  "settings.title": "设置", "settings.subtitle": "语言、外观和提醒。", "settings.language": "语言",
+  "settings.appearance": "外观", "settings.themeLight": "浅色", "settings.themeDark": "深色", "settings.themeSystem": "跟随系统",
+  "settings.alerts": "提醒", "settings.alertsEnable": "启用低库存提醒",
+  "settings.alertsBrowser": "浏览器通知", "settings.alertsDaily": "每日摘要",
+  "settings.saveAlerts": "保存提醒设置", "settings.saved": "设置已保存",
+  "alert.low_stock": "有 {count} 种商品库存偏低 — 请查看订货单。",
+  "scan.title": "查找商品", "scan.camera": "相机扫描", "scan.manual": "手动输入", "scan.lookup": "查找",
+  "low.title": "低库存", "reorder.title": "订货单", "reorder.print": "打印",
+  "toast.welcome": "欢迎回来", "toast.signedOut": "已退出"
+}
